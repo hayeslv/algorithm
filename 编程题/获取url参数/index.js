@@ -12,7 +12,7 @@
 // 输入：http://www.nowcoder.com?key=1&key=2&key=3&test=4#hehe key
 // 输出：[1, 2, 3]
 
-function getUrlParam1(sUrl, sKey) {
+function getUrlParam(sUrl, sKey) {
   const params = sUrl.split('?')[1]
   if(!params) return undefined
   var paramArr = params.split('#')[0].split('&'); // 取出每个参数的键值对放入数组
@@ -32,8 +32,9 @@ function getUrlParam1(sUrl, sKey) {
 }
 
 
+
 module.exports = {
-  getUrlParam1
+  getUrlParam
 }
 
 
