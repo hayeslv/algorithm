@@ -10,7 +10,7 @@ describe('N数之和', () => {
     const arr = [1, 4, 7, 11, 9, 8, 10, 6];
     const N = 3;
     const M = 27;
-    expect(search(arr, N, M)).toEqual([ [ 9, 8, 10 ], [ 11, 10, 6 ], [ 7, 11, 9 ] ])
+    expect(search(arr, N, M)).toEqual([ [ 7, 11, 9 ], [ 9, 8, 10 ], [ 11, 10, 6 ] ])
   })
 })
 

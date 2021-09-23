@@ -41,7 +41,7 @@ const search = (arr, count, sum) => {
     // 每一种满足个数为 N 的选择情况下，继续判断是否满足和为M
     for(let j=0; j<len; j++) {
       // 建立映射，找出选择位上的元素
-      if(i & 1 << (len - 1 - j)) {
+      if(i & (1 << j)) {
         s += arr[j]
         temp.push(arr[j])
       }
