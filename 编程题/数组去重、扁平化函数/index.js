@@ -19,7 +19,7 @@ function flat(arr) {
 
 // Set去重
 function unique(arr) {
-  return [...new Set([...arr])]
+  return [...new Set(arr)]
 }
 
 module.exports = {
