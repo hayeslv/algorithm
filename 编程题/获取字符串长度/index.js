@@ -8,16 +8,12 @@
  * 输出：17
  */
 
-function strLength(s, bUnicode255For1) {
-  if(bUnicode255For1) return s.length;
-  let len = 0
-  Array.prototype.forEach.call(s, v => {
-    len++;
-    (v.charCodeAt() > 255) && len++
+function cssStyle2DomStyle(sName) {
+  const newName =  sName.replace(/-(\w)/g, (all, letter) => {
+      return letter.toUpperCase()
   })
-  return len
+  return newName[0].toLowerCase() + newName.substr(1, newName.length)
 }
 
-console.log(strLength('hello world, 牛客', false));
-
+console.log(cssStyle2DomStyle('-webkit-background-composite'));
 
