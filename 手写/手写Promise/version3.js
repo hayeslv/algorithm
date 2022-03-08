@@ -140,10 +140,21 @@ class Promise {
   }
 }
 
-const promise = new Promise((resolve, reject) => {
-  reject('失败');
-}).then().then().then(data=>{
-  console.log(data);
-},err=>{
-  console.log('err',err);
-})
+Promise.defer = Promise.deferred = function () {
+  let dfd = {};
+  dfd.promise = new Promise((resolve,reject)=>{
+      dfd.resolve = resolve;
+      dfd.reject = reject;
+  })
+  return dfd;
+}
+
+module.exports = Promise
+
+// const promise = new Promise((resolve, reject) => {
+//   reject('失败');
+// }).then().then().then(data=>{
+//   console.log(data);
+// },err=>{
+//   console.log('err',err);
+// })

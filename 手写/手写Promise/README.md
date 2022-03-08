@@ -527,6 +527,42 @@ Promise.defer = Promise.deferred = function () {
 }
 ```
 
+安装测试脚本:
+
+```js
+npm i -D promises-aplus-tests
+```
+
+如果当前的 promise 源码的文件名为 promise.js
+
+那么在对应的目录执行以下命令:
+
+```js
+promises-aplus-tests promise.js
+```
+
+promises-aplus-tests 中共有 872 条测试用例。以上代码，可以完美通过所有用例。
+
+
+
+**文章中使用 setTimeout 实现 promise 的异步，会对大家造成误解。所以这里添加一些标注:**
+
+由于原生的 Promise 是V8引擎提供的微任务，我们无法还原V8引擎的实现，所以这里使用 setTimeout 模拟异步，所以原生的是微任务，这里是宏任务。
+
+Promise A+ 规范3.1 中也提到了：这可以通过“宏任务”机制（例如setTimeout或setImmediate）或“微任务”机制（例如MutatonObserver或）来实现process.nextTick。
+
+如果你想实现 promise 的微任务，可以 mutationObserver 替代 seiTimeout 来实现微任务。
+
+
+
+
+
+
+
+
+
+
+
 
 
 
