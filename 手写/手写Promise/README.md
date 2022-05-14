@@ -555,21 +555,285 @@ Promise A+ 规范3.1 中也提到了：这可以通过“宏任务”机制（�
 
 
 
+## Promise 的 API
+
+虽然上述的 promise 源码已经符合 Promise/A+ 的规范，但是原生的 Promise 还提供了一些其他方法，如:
+
+- Promise.resolve()
+- Promise.reject()
+- Promise.prototype.catch()
+- Promise.prototype.finally()
+- Promise.all()
+- Promise.race(）
+
+下面具体说一下每个方法的实现:
+
+### Promise.resolve
+
+默认产生一个成功的 promise。
+
+```js
+static resolve(data){
+  return new Promise((resolve,reject)=>{
+    resolve(data);
+  })
+}
+```
+
+这里需要注意的是，**promise.resolve 是具备等待功能的**。如果参数是 promise 会等待这个 promise 解析完毕，在向下执行，所以这里需要在 resolve 方法中做一个小小的处理：
+
+```js
+let resolve = (value) => {
+  // ======新增逻辑======
+  // 如果 value 是一个promise，那我们的库中应该也要实现一个递归解析
+  if(value instanceof Promise){
+      // 递归解析 
+      return value.then(resolve,reject)
+  }
+  // ===================
+  if(this.status ===  PENDING) {
+    this.status = FULFILLED;
+    this.value = value;
+    this.onResolvedCallbacks.forEach(fn=>fn());
+  }
+}
+```
+
+测试一下：
+
+```js
+Promise.resolve(new Promise((resolve, reject) => {
+  setTimeout(() => {
+    resolve('ok');
+  }, 3000);
+})).then(data=>{
+  console.log(data,'success')
+}).catch(err=>{
+  console.log(err,'error')
+})
+```
+
+控制台等待 `3s` 后输出：
+
+```js
+"ok success"
+```
+
+### Promise.reject
+
+默认产生一个失败的 promise，Promise.reject 是直接将值变成错误结果。
+
+```js
+static reject(reason){
+  return new Promise((resolve,reject)=>{
+    reject(reason);
+  })
+}
+```
+
+### Promise.prototype.catch
+
+Promise.prototype.catch 用来捕获 promise 的异常，**就相当于一个没有成功的 then**。
+
+```js
+Promise.prototype.catch = function(errCallback){
+  return this.then(null,errCallback)
+}
+```
+
+### Promise.prototype.finally
+
+finally 表示不是最终的意思，而是无论如何都会执行的意思。 如果返回一个 promise 会等待这个 promise 也执行完毕。如果返回的是成功的 promise，会采用上一次的结果；如果返回的是失败的 promise，会用这个失败的结果，传到 catch 中。
+
+```js
+Promise.prototype.finally = function(callback) {
+  return this.then((value)=>{
+    return Promise.resolve(callback()).then(()=>value)
+  },(reason)=>{
+    return Promise.resolve(callback()).then(()=>{throw reason})
+  })  
+}
+```
+
+测试一下：
+
+```js
+Promise.resolve(456).finally(()=>{
+  return new Promise((resolve,reject)=>{
+    setTimeout(() => {
+        resolve(123)
+    }, 3000);
+  })
+}).then(data=>{
+  console.log(data,'success')
+}).catch(err=>{
+  console.log(err,'error')
+})
+```
+
+控制台等待 `3s` 后输出：
+
+```js
+"456 success"
+```
 
 
 
+### Promise.all
+
+promise.all 是解决并发问题的，多个异步并发获取最终的结果（如果有一个失败则失败）。
+
+```js
+Promise.all = function(values) {
+  if (!Array.isArray(values)) {
+    const type = typeof values;
+    return new TypeError(`TypeError: ${type} ${values} is not iterable`)
+  }
+  return new Promise((resolve, reject) => {
+    let resultArr = [];
+    let orderIndex = 0;
+    const processResultByKey = (value, index) => {
+      resultArr[index] = value;
+      if (++orderIndex === values.length) {
+          resolve(resultArr)
+      }
+    }
+    for (let i = 0; i < values.length; i++) {
+      let value = values[i];
+      if (value && typeof value.then === 'function') {
+        value.then((value) => {
+          processResultByKey(value, i);
+        }, reject);
+      } else {
+        processResultByKey(value, i);
+      }
+    }
+  });
+}
+```
+
+测试一下
+
+```js
+let p1 = new Promise((resolve, reject) => {
+  setTimeout(() => {
+    resolve('ok1');
+  }, 1000);
+})
+
+let p2 = new Promise((resolve, reject) => {
+  setTimeout(() => {
+    reject('ok2');
+  }, 1000);
+})
+
+Promise.all([1,2,3,p1,p2]).then(data => {
+  console.log('resolve', data);
+}, err => {
+  console.log('reject', err);
+})
+```
+
+控制台等待 `1s` 后输出：
+
+```js
+"resolve [ 1, 2, 3, 'ok1', 'ok2' ]"
+```
+
+### Promise.race
+
+Promise.race 用来处理多个请求，采用最快的（谁先完成用谁的）。
+
+```js
+Promise.race = function(promises) {
+  return new Promise((resolve, reject) => {
+    // 一起执行就是for循环
+    for (let i = 0; i < promises.length; i++) {
+      let val = promises[i];
+      if (val && typeof val.then === 'function') {
+        val.then(resolve, reject);
+      } else { // 普通值
+        resolve(val)
+      }
+    }
+  });
+}
+```
+
+特别需要注意的是：因为**Promise 是没有中断方法的**，xhr.abort()、ajax 有自己的中断方法，axios 是基于 ajax 实现的；fetch 基于 promise，所以他的请求是无法中断的。
+
+这也是 promise 存在的缺陷，我们可以使用 race 来自己封装中断方法：
+
+```js
+function wrap(promise) {
+  // 在这里包装一个 promise，可以控制原来的promise是成功还是失败
+  let abort;
+  let newPromise = new Promise((resolve, reject) => { // defer 方法
+      abort = reject;
+  });
+  let p = Promise.race([promise, newPromise]); // 任何一个先成功或者失败 就可以获取到结果
+  p.abort = abort;
+  return p;
+}
+
+const promise = new Promise((resolve, reject) => {
+  setTimeout(() => { // 模拟的接口调用 ajax 肯定有超时设置
+      resolve('成功');
+  }, 1000);
+});
+
+let newPromise = wrap(promise);
+
+setTimeout(() => {
+  // 超过3秒 就算超时 应该让 proimise 走到失败态
+  newPromise.abort('超时了');
+}, 3000);
+
+newPromise.then((data => {
+    console.log('成功的结果' + data)
+})).catch(e => {
+    console.log('失败的结果' + e)
+})
+```
+
+控制台等待 `1s` 后输出：
+
+```js
+"成功的结果成功"
+```
 
 
 
+## promisify
 
+promisify 是把一个 node 中的 api 转换成 promise 的写法。 在 node 版本 12.18 以上，已经支持了原生的 promisify 方法：`const fs = require('fs').promises`。
 
+```js
+const promisify = (fn) => { // 典型的高阶函数 参数是函数 返回值是函数 
+  return (...args)=>{
+    return new Promise((resolve,reject)=>{
+      fn(...args,function (err,data) { // node中的回调函数的参数 第一个永远是error
+        if(err) return reject(err);
+        resolve(data);
+      })
+    });
+  }
+}
+```
 
+如果想要把 node 中所有的 api 都转换成 promise 的写法呢：
 
-
-
-
-
-
+```js
+const promisifyAll = (target) =>{
+  Reflect.ownKeys(target).forEach(key=>{
+    if(typeof target[key] === 'function'){
+      // 默认会将原有的方法 全部增加一个 Async 后缀 变成 promise 写法
+      target[key+'Async'] = promisify(target[key]);
+    }
+  });
+  return target;
+}
+```
 
 
 
