@@ -20,7 +20,7 @@ var LRUCacheBase = function(capacity) {
 };
 
 LRUCacheBase.prototype.get = function(key) {
-  if(this.cache[key]) {
+  if(this.cache[key] !== undefined) {
       // 调整位置
       remove(this.keys, key)
       this.keys.push(key)
@@ -55,7 +55,7 @@ function remove(arr, key) {
 }
 // 移除缓存中的 key
 function removeCache(cache, keys, key) {
-  cache[key] = null
+  cache[key] = undefined
   remove(keys, key)
 }
 
@@ -69,6 +69,7 @@ lRUCache.put(4, 4); // 该操作会使得关键字 1 作废，缓存是 {4=4, 3=
 console.log(lRUCache.get(1));    // 返回 -1 (未找到)
 console.log(lRUCache.get(3));    // 返回 3
 console.log(lRUCache.get(4));    // 返回 4
+
 
 // ========================================================================================================
 
